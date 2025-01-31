@@ -4,10 +4,11 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 from database import load_data_to_mysql
 from services import extract_data_from_db, handle_null_values_imputation, remove_unneeded_fields
+from sklearn.cluster import KMeans
 from sklearn.linear_model import LinearRegression
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import LabelEncoder
+from sklearn.preprocessing import LabelEncoder, StandardScaler
 
 #  File path for dataset
 file_path = "superstore-data.csv"
@@ -28,7 +29,7 @@ load_data_to_mysql(file_path, table_name="superstore_data")
 # Extract data from MySQL
 db_data = extract_data_from_db()
 
-# Descriptive Statistics Heatmap
+#  Descriptive Statistics Heatmap
 plt.figure(figsize=(12, 6))
 sns.heatmap(df.describe(), annot=True, fmt=".2f", cmap="coolwarm")
 plt.title("Descriptive Statistics Heatmap")
@@ -81,8 +82,52 @@ plt.xlabel("Profit")
 plt.ylabel("Frequency")
 plt.show()
 
-#  SALES FORECAST (Predict Sales for the Next 6 Months)
+#  CUSTOMER SEGMENTATION (K-Means Clustering)
+customer_data = df.groupby("Customer ID")[["Sales", "Profit"]].sum().reset_index()
+
+# Standardize the data
+scaler = StandardScaler()
+customer_data_scaled = scaler.fit_transform(customer_data[["Sales", "Profit"]])
+
+# Apply K-Means Clustering
+kmeans = KMeans(n_clusters=3, random_state=42, n_init=10)
+customer_data["Cluster"] = kmeans.fit_predict(customer_data_scaled)
+
+#  Visualizing Customer Segments
+plt.figure(figsize=(10, 6))
+sns.scatterplot(x=customer_data["Sales"], y=customer_data["Profit"], hue=customer_data["Cluster"], palette="viridis")
+plt.title("Customer Segmentation (K-Means Clustering)")
+plt.xlabel("Total Sales")
+plt.ylabel("Total Profit")
+plt.show()
+
+#  BEST TIME TO OFFER DISCOUNTS (Discount vs. Profit Trend)
 df["Order Date"] = pd.to_datetime(df["Order Date"])
+df["YearMonth"] = df["Order Date"].dt.to_period("M")  # Extract Year-Month
+
+# Aggregate discount trends per month
+monthly_discount = df.groupby("YearMonth")[["Discount", "Profit"]].mean().reset_index()
+monthly_discount["YearMonth"] = monthly_discount["YearMonth"].astype(str)  # Convert to string for plotting
+
+#  Plot Discount Trends
+fig, ax1 = plt.subplots(figsize=(12, 6))
+
+ax2 = ax1.twinx()
+ax1.plot(monthly_discount["YearMonth"], monthly_discount["Discount"], 'g-', marker='o', label="Avg Discount (%)")
+ax2.plot(monthly_discount["YearMonth"], monthly_discount["Profit"], marker='o', linestyle="dashed", color="blue", label="Avg Profit")
+
+
+ax1.set_xlabel("Year-Month")
+ax1.set_ylabel("Average Discount (%)", color='g')
+ax2.set_ylabel("Average Profit", color='b')
+
+plt.title("Best Time to Offer Discounts (Discount vs. Profit Trend)")
+fig.autofmt_xdate()
+ax1.legend(loc="upper left")
+ax2.legend(loc="upper right")
+plt.show()
+
+#  SALES FORECAST (Predict Sales for the Next 6 Months)
 df["YearMonth"] = df["Order Date"].dt.to_period("M")  # Extract Year-Month
 
 # Group sales by Year-Month
@@ -103,13 +148,11 @@ model.fit(X_train, y_train)
 future_dates = np.array(range(len(monthly_sales), len(monthly_sales) + 6)).reshape(-1, 1)
 future_sales = model.predict(pd.DataFrame(future_dates, columns=["NumericDate"]))
 
-# Fix: Ensure x and y dimensions match
-future_x_labels = list(pd.date_range(start=monthly_sales["YearMonth"].iloc[-1], periods=6, freq="M").strftime('%Y-%m'))
-
 #  Plot Sales Forecast
 plt.figure(figsize=(12, 6))
 plt.plot(monthly_sales["YearMonth"], monthly_sales["Sales"], marker='o', label="Actual Sales")
-plt.plot(future_x_labels, future_sales, marker='o', linestyle="dashed", color="red", label="Predicted Sales")
+plt.plot(pd.date_range(start=monthly_sales["YearMonth"].iloc[-1], periods=6, freq="M").strftime('%Y-%m'),
+         future_sales, marker='o', linestyle="dashed", color="red", label="Predicted Sales")
 
 plt.xticks(rotation=45)
 plt.xlabel("Year-Month")
@@ -117,29 +160,4 @@ plt.ylabel("Total Sales")
 plt.title("Sales Forecast for Next 6 Months")
 plt.legend()
 plt.show()
-
-#  MOST PROFITABLE CATEGORY PREDICTION (Machine Learning Model)
-df["Category"] = LabelEncoder().fit_transform(df["Category"])  # Convert category to numbers
-df["Sub-Category"] = LabelEncoder().fit_transform(df["Sub-Category"])
-
-X = df[["Sales", "Quantity", "Discount"]]  # Features
-y = df["Category"]  # Target (Category)
-
-#  Train Decision Tree Model
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
-model = DecisionTreeClassifier()
-model.fit(X_train, y_train)
-
-#  Make Prediction
-predicted_category = model.predict(pd.DataFrame([[500, 2, 0.1]], columns=X.columns))
-
-#  Plot Predicted Category
-plt.figure(figsize=(8, 5))
-sns.barplot(x=list(df["Category"].unique()), y=[1 if cat == predicted_category[0] else 0 for cat in df["Category"].unique()], hue=list(df["Category"].unique()), palette="coolwarm", legend=False)
-plt.title("Predicted Most Profitable Category")
-plt.xlabel("Category")
-plt.ylabel("Prediction Confidence")
-plt.show()
-
-print(f"\nPredicted Most Profitable Category for Sales=500, Quantity=2, Discount=10%: {df['Category'].unique()[predicted_category[0]]}")
 
