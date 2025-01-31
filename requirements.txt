@@ -1,0 +1,24 @@
+contourpy==1.2.0
+cycler==0.12.1
+fonttools==4.44.1
+kiwisolver==1.4.5
+matplotlib==3.8.1
+numpy==1.26.2
+packaging==23.2
+pandas==2.1.3
+Pillow==10.1.0
+pyparsing==3.1.1
+python-dateutil==2.8.2
+pytz==2023.3.post1
+six==1.16.0
+tzdata==2023.3
+
+# Additional dependencies for data processing and MySQL integration
+sqlalchemy==2.0.23  # Required for MySQL database connection
+mysql-connector-python==8.1.0  # MySQL connector for Python
+scikit-learn==1.3.0  # Required for Machine Learning models (Sales Forecasting, K-Means Clustering)
+seaborn==0.13.0  # For visualizing correlation matrices, histograms, and scatter plots
+
+# Dependencies for handling environment variables and optimization
+joblib==1.3.2
+threadpoolctl==3.2.0
