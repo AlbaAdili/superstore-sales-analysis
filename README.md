@@ -24,9 +24,21 @@ This project aims to analyze **Superstore Sales Data** using **Python and MySQL*
 ````
 - git clone <https://github.com/AlbaAdili/superstore-sales-analysis.git>
 - cd superstore-sales-analysis
-
 ````
 2. Install Dependencies
 ````
 pip install -r requirements.txt
+````
+3. Set Up MySQL Database
+````
+sudo systemctl start mysql  # macOS/Linux
+net start mysql             # Windows
+````
+4. Create a Database
+````
+CREATE DATABASE superstore;
+````
+5. Run the Analysis & Generate Visualizations
+````
+python main.py
 ````
