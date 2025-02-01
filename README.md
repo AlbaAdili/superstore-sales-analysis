@@ -44,7 +44,7 @@ python main.py
 ````
 
 
-## MySQL Database Schema
+### MySQL Database Schema
 ````sql
 CREATE TABLE superstore_data (
     Row_ID INT PRIMARY KEY,
